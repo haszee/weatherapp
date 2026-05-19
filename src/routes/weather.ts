@@ -1,6 +1,6 @@
 import {Router} from 'express';
 import type { Request, Response } from 'express';
-import { getAllweatherRecords, getWeatherRecordById  } from '../services/weather.js';
+import { getAllweatherRecords, getWeatherRecordById, createWeatherRecord  } from '../services/weather.js';
 
 const router = Router();
 
@@ -14,10 +14,7 @@ router.get('/', async (req: Request, res: Response) => {
 
 })
 
-router.get('/:id', async (req: Request, res: Response) => {
-    if (typeof req.params.id !== 'string') {
-        return res.status(400).json({ error: 'Weather record ID is required' });
-    }
+router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
         return res.status(400).json({ error: 'Invalid weather record ID' });
@@ -35,8 +32,23 @@ router.get('/:id', async (req: Request, res: Response) => {
 })
 
 router.post('/', async (req: Request, res: Response) => {
+    const { city, date_from, date_to } = req.body;
+
+    if (!city || !date_from || !date_to) {
+        return res.status(400).json({ error: 'city, date_from and date_to are required' });
+    }
+
+    if (typeof city !== 'string' || typeof date_from !== 'string' || typeof date_to !== 'string') {
+        return res.status(400).json({ error: 'city, date_from and date_to must be strings' });
+    }
+
+    if (new Date(date_from) > new Date(date_to)) {
+        return res.status(400).json({ error: 'date_from cannot be after date_to' });
+    }
+
     try {
-        
+        const weatherRecord = await createWeatherRecord(req.body);
+        res.status(201).json(weatherRecord);
     } catch (error) {
         res.status(500).json({ error: 'Failed to create weather record' });
     }
