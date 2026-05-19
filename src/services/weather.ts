@@ -45,7 +45,6 @@ export async function getWeatherRecordById(id: number) {
 export async function createWeatherRecord(data: { city: string, date_from: string, date_to: string }) {
     const { city, date_from, date_to } = data;
 
-    //call geocoding api to get lat and lon for the city
     const geoCode = await fetch(`http://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=1&appid=${openweatherApiKey}`);
     const geoData = await geoCode.json();
 
@@ -57,8 +56,6 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
     if (!lat || !lon) {
         throw new Error('Unable to determine location coordinates');
     }
-
-    //save location, request and weather data to the database
 
     const new_location = await db.insert(locations).values({
         query: city,
@@ -87,17 +84,23 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
 
     const result = [];
     for (let date = new Date(date_from); date <= new Date(date_to); date.setDate(date.getDate() + 1)) {
+        const dayData = weatherData.find((d: any) => d.date === date.toISOString().
+        split('T')[0]!);
+        if (!dayData) {
+            result.push(null);
+            continue;
+        }
         const new_record = {
             locationId: locationId, 
             requestId: requestId, 
             date: date.toISOString().split('T')[0], 
-            tempC: weatherData.tempC, 
-            feelsLikeC: weatherData.feelsLikeC, 
-            humidity: weatherData.humidity, 
-            windSpeedMs: weatherData.windSpeedMs, 
-            precipProbability: weatherData.precipProbability, 
-            uvIndex: weatherData.uvIndex, 
-            aqi: weatherData.aqi 
+            tempC: dayData.tempC ?? null, 
+            feelsLikeC: dayData.feelsLikeC ?? null, 
+            humidity: dayData.humidity ?? null, 
+            windSpeedMs: dayData.windSpeedMs ?? null, 
+            precipProbability: dayData.precipProbability ?? null, 
+            uvIndex: dayData.uvIndex ?? null, 
+            aqi: dayData.aqi ?? null
         };
         const record = await db.insert(weatherRecords).values(new_record).returning();
         result.push(record[0]);
@@ -137,7 +140,7 @@ async function fetchWeatherData(city: string, date_from: string, date_to: string
                 date: dateStr,
                 tempC: avg(dailyWeatherData.map((e: any) => e.main), 'temp'),
                 feelsLikeC: avg(dailyWeatherData.map((e: any) => e.main), 'feels_like'),
-                humidity: avg(dailyWeatherData.map((e: any) => e.main), 'humidity'),
+                humidity: Math.round(avg(dailyWeatherData.map((e: any) => e.main), 'humidity')),
                 windSpeedMs: avg(dailyWeatherData.map((e: any) => e.wind), 'speed'),
                 precipProbability: avg(dailyWeatherData, 'pop'),
                 uvIndex: null, // OpenWeatherMap's free API does not provide UV index in the forecast data

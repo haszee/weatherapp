@@ -50,6 +50,7 @@ router.post('/', async (req: Request, res: Response) => {
         const weatherRecord = await createWeatherRecord(req.body);
         res.status(201).json(weatherRecord);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to create weather record' });
     }
 })
