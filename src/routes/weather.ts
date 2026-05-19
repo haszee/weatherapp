@@ -46,14 +46,14 @@ router.post('/', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'date_from cannot be after date_to' });
     }
 
-    const start = new Date(date_from);
-    const end = new Date(date_to);
+    const start = new Date(date_to).getTime();
+    const end = new Date(date_from).getTime();
 
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
+    const dayDiff = Math.round(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end dates
 
+    console.log('Day difference:', dayDiff);
 
-    if (Math.abs(end.getTime() - start.getTime()) > 5 * 24 * 60 * 60 * 1000) {
+    if (dayDiff > 5) {
         return res.status(400).json({ error: 'Date range cannot be more than 5 days' });
     }
 
