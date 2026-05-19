@@ -94,12 +94,12 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
             locationId: locationId, 
             requestId: requestId, 
             date: date.toISOString().split('T')[0], 
-            tempC: dayData.tempC ?? null, 
-            feelsLikeC: dayData.feelsLikeC ?? null, 
+            tempC: dayData.tempC?.toString() ?? null, 
+            feelsLikeC: dayData.feelsLikeC?.toString() ?? null, 
             humidity: dayData.humidity ?? null, 
-            windSpeedMs: dayData.windSpeedMs ?? null, 
-            precipProbability: dayData.precipProbability ?? null, 
-            uvIndex: dayData.uvIndex ?? null, 
+            windSpeedMs: dayData.windSpeedMs?.toString() ?? null, 
+            precipProbability: dayData.precipProbability?.toString() ?? null, 
+            uvIndex: null, 
             aqi: dayData.aqi ?? null
         };
         const record = await db.insert(weatherRecords).values(new_record).onConflictDoNothing().returning();
