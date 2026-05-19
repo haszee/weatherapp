@@ -1,6 +1,16 @@
 import { locations, requestsLog, weatherRecords } from '../db/schema.js';
 import db from '../db/index.js';
 import { eq } from 'drizzle-orm';
+import { string } from 'zod';
+
+const openweatherApiKey = process.env.OPENWEATHER_API_KEY;
+if (!openweatherApiKey) {
+    throw new Error('OPENWEATHER_API_KEY is not set');
+}
+
+const avg = (arr: any[], key: string) =>
+    arr.reduce((sum, entry) => sum + entry[key], 0) / arr.length;
+
 
 export async function getAllweatherRecords() {
     return await db.select().from(weatherRecords)
@@ -35,12 +45,25 @@ export async function getWeatherRecordById(id: number) {
 export async function createWeatherRecord(data: { city: string, date_from: string, date_to: string }) {
     const { city, date_from, date_to } = data;
 
+    //call geocoding api to get lat and lon for the city
+    const geoCode = await fetch(`http://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=1&appid=${openweatherApiKey}`);
+    const geoData = await geoCode.json();
+
+    const lat = geoData[0]?.lat || null; 
+    const lon = geoData[0]?.lon || null; 
+    const locationName = geoData[0]?.name || city;
+    const country = geoData[0]?.country || 'Unknown';
+
+    if (!lat || !lon) {
+        throw new Error('Unable to determine location coordinates');
+    }
+
     //save location, request and weather data to the database
 
     const new_location = await db.insert(locations).values({
         query: city,
-        location: city, // This should be the actual location name from the weather API
-        country: 'Unknown' // This should be the actual country name from the weather API
+        location: locationName, 
+        country: country 
     }).onConflictDoNothing().returning();
 
     const locationId = new_location[0]?.id ?? (
@@ -51,7 +74,6 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
         throw new Error('Unable to determine location ID');
     }
 
-    // use DB column names as defined in the requestsLog schema
     const new_request = await db.insert(requestsLog).values({
         locationId: locationId,
         dateFrom: new Date(date_from).toISOString().split('T')[0],
@@ -61,8 +83,7 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
     const requestId = new_request[0]?.id;
     if (!requestId) throw new Error('Failed to create request log');
 
-    //call openweather api to get weather data for the city and date range
-    const weatherData = await fetchWeatherData(city, date_from, date_to);
+    const weatherData = await fetchWeatherData(city, date_from, date_to, lat, lon);
 
     const result = [];
     for (let date = new Date(date_from); date <= new Date(date_to); date.setDate(date.getDate() + 1)) {
@@ -84,21 +105,47 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
     return result;
 };
 
-async function fetchWeatherData(city: string, date_from: string, date_to: string) {
-    //call geocoding api to get lat and lon for the city
+async function fetchWeatherData(city: string, date_from: string, date_to: string, lat: number, lon: number) {
 
-    const lat = 0; // This should be the actual latitude from the geocoding API
-    const lon = 0; // This should be the actual longitude from the geocoding API
+    const weatherResponse = await fetch(`http://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${openweatherApiKey}&units=metric`);
+    const weatherData = await weatherResponse.json();
 
-    // This function should call the OpenWeather API to fetch weather data for the given city and date range
-    // For the purpose of this example, we will return dummy data
-    return {
-        tempC: 25,
-        feelsLikeC: 27,
-        humidity: 60,
-        windSpeedMs: 5,
-        precipProbability: 0.2,
-        uvIndex: 5,
-        aqi: 50
-    };
+    const aqiResponse = await fetch(`http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat=${lat}&lon=${lon}&appid=${openweatherApiKey}`);
+    const aqiData = await aqiResponse.json();
+
+    // allow undefined values for keys that may not be present
+    const aqiMap: Record<string, number | null > = {};
+    for (let date = new Date(date_from); date <= new Date(date_to); date.setDate(date.getDate() + 1)) {
+        const dateStr = date.toISOString().split('T')[0]!;
+        const dailyAqiData = aqiData.list.filter((entry: any) => 
+            new Date(entry.dt * 1000).toISOString().split('T')[0] === dateStr
+        );
+
+        aqiMap[dateStr] = dailyAqiData.length > 0 
+            ? Math.round(avg(dailyAqiData.map((e: any) => e.main), 'aqi'))
+            : null;
+    }
+    
+    // Get the daily data in 3 hour intervals then average it for each date
+    const records = [];
+    for (let date = new Date(date_from); date <= new Date(date_to); date.setDate(date.getDate() + 1)) {
+        const dateStr = date.toISOString().split('T')[0]!;
+        const dailyWeatherData = weatherData.list.filter((entry: any) => entry.dt_txt.startsWith(dateStr));
+
+        if (dailyWeatherData.length > 0) {
+            records.push({
+                date: dateStr,
+                tempC: avg(dailyWeatherData.map((e: any) => e.main), 'temp'),
+                feelsLikeC: avg(dailyWeatherData.map((e: any) => e.main), 'feels_like'),
+                humidity: avg(dailyWeatherData.map((e: any) => e.main), 'humidity'),
+                windSpeedMs: avg(dailyWeatherData.map((e: any) => e.wind), 'speed'),
+                precipProbability: avg(dailyWeatherData, 'pop'),
+                uvIndex: null, // OpenWeatherMap's free API does not provide UV index in the forecast data
+                aqi: aqiMap[dateStr] ?? null
+            });
+        }
+
+    }
+
+    return records;
 };
