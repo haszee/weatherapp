@@ -46,6 +46,10 @@ router.post('/', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'date_from cannot be after date_to' });
     }
 
+    if (new Date(date_from) - new Date(date_to) > 5 * 24 * 60 * 60 * 1000) {
+        return res.status(400).json({ error: 'Date range cannot be more than 5 days' });
+    }
+
     try {
         const weatherRecord = await createWeatherRecord(req.body);
         res.status(201).json(weatherRecord);

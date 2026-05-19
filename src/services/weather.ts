@@ -102,9 +102,8 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
             uvIndex: dayData.uvIndex ?? null, 
             aqi: dayData.aqi ?? null
         };
-        const record = await db.insert(weatherRecords).values(new_record).returning();
-        result.push(record[0]);
-    }
+        const record = await db.insert(weatherRecords).values(new_record).onConflictDoNothing().returning();
+        result.push(record[0] || null);
     return result;
 };
 
