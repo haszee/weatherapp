@@ -54,8 +54,8 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
     // use DB column names as defined in the requestsLog schema
     const new_request = await db.insert(requestsLog).values({
         locationId: locationId,
-        dateFrom: new Date(date_from),
-        dateTo: new Date(date_to),
+        dateFrom: new Date(date_from).toISOString().split('T')[0],
+        dateTo: new Date(date_to).toISOString().split('T')[0]
     }).returning();
 
     const requestId = new_request[0]?.id;
@@ -69,7 +69,7 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
         const new_record = {
             locationId: locationId, 
             requestId: requestId, 
-            date: new Date(date), 
+            date: date.toISOString().split('T')[0], 
             tempC: weatherData.tempC, 
             feelsLikeC: weatherData.feelsLikeC, 
             humidity: weatherData.humidity, 
