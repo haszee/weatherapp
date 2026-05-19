@@ -3,12 +3,18 @@ import express from 'express'
 import cors from 'cors'
 import 'dotenv/config';
 import { sql } from 'drizzle-orm';
+import locationsRouter from './routes/locations.js';
+import weatherRoutes from './routes/weather.js';
+
 
 const app = express();
 
 app.use(express.json());
 
 app.use(cors());
+
+app.use('/api/locations', locationsRouter);
+app.use('/api/weather', weatherRoutes);
 
 async function checkDatabaseConnection() {
   try {
