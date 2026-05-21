@@ -1,0 +1,6 @@
+date,location,country,temp_c,feels_like_c,humidity,wind_speed_ms,precip_probability,uv_index,aqi
+2026-05-20,"Edmonton","CA",8.69,6.40,75,4.37,0.43,,2
+2026-05-21,"Edmonton","CA",10.59,9.29,65,2.98,0.15,,2
+2026-05-22,"Edmonton","CA",14.85,13.77,53,2.55,0.00,,2
+2026-05-23,"Edmonton","CA",14.65,13.76,64,2.00,0.13,,1
+2026-05-24,"Edmonton","CA",15.14,14.36,63,3.36,0.25,,

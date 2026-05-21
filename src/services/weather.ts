@@ -1,7 +1,6 @@
 import { locations, requestsLog, weatherRecords } from '../db/schema.js';
 import db from '../db/index.js';
 import { eq } from 'drizzle-orm';
-import { string } from 'zod';
 
 const openweatherApiKey = process.env.OPENWEATHER_API_KEY;
 if (!openweatherApiKey) {
@@ -73,8 +72,8 @@ export async function createWeatherRecord(data: { city: string, date_from: strin
 
     const new_request = await db.insert(requestsLog).values({
         locationId: locationId,
-        dateFrom: new Date(date_from).toISOString().split('T')[0],
-        dateTo: new Date(date_to).toISOString().split('T')[0]
+        dateFrom: new Date(date_from).toISOString().split('T')[0]!,
+        dateTo: new Date(date_to).toISOString().split('T')[0]!
     }).returning();
 
     const requestId = new_request[0]?.id;

@@ -11,7 +11,7 @@ export const locations = pgTable('locations',{
     query:      text('query').notNull(),
     location:   text('location').notNull(),
     country:    text('country').notNull(),
-    created_at: timestamp('created_at', { withTimezone: true,mode: 'date' }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true,mode: 'date' }).notNull().defaultNow(),
 }, (t) => ({
     queryUnique: uniqueIndex('idx_locations_query').on(sql`LOWER(${t.query})`),
 }));
